@@ -22,10 +22,11 @@ instrument_names = ["MODIS", "VIIRS", "AIRS", "MOPITT", "OMI", "OMPS", "TROPOMI"
     "TIR", "GLISTIN-A", "AMR", "TMR", "ACC", "SCA", "GLAS", "PALSAR", "DDMI",
     "AirSWOT", "ETM+", "TIRS", "MSI"]
 
-platform_names = ["AIRCRAFT", "Aqua", "Aquarius_SAC-D", "Terra", "AURA", "Suomi-NPP", "Shizuku", "GRACE", "Landsat 8",
-    "ISS", "SMAP", "ALOS", "Airborne", "EO-1", "GCOM-W1", "ICESat-2", "Sentinel-1", 
-    "Aura", "Sentinel-5P", "Sentinel-2", "Sentinel-3", "Sentinel-6", "OMG", "TOPEX",
-    "GRACE-FO", "JPSS", "CYGNSS", "SAC", "GPM", "TRMM","IMERG"]
+platform_names = ["AIRCRAFT", "Aqua", "Aquarius_SAC-D", "Terra", "AURA", "Suomi-NPP",
+    "Shizuku", "GRACE", "Landsat 8", "ISS", "SMAP", "ALOS", "Airborne", "EO-1",
+    "GCOM-W1", "ICESat-2", "Sentinel-1", "Aura", "Sentinel-5P", "Sentinel-2",
+    "Sentinel-3", "Sentinel-6", "OMG", "TOPEX","GRACE-FO", "JPSS", "CYGNSS", "SAC",
+    "GPM", "TRMM","IMERG"]
 
 overall = list_of_shortNames + instrument_names + platform_names
 
@@ -33,25 +34,35 @@ application_topics = ['flood', 'fire', 'landslide', 'water', 'air', 'hurricane',
     'cyclone', 'snowfall', 'lake height', 'agriculture', 'hazard', 'earthquake',
     'energy', 'soil moisture', 'storm', 'precipitation', 'river height', 'volcanoe']
 
-keywords = ['hurricane', 'earthquake', 'landslide', 'fire', 'flood', 'landslide',
+keywords = ['hurricane', 'earthquake', 'landslide', 'fire', 'flood',
     'air', 'water', 'lightning', 'snow', 'volcano', 'cloud', 'ocean']
 
 measurements = ['aerosol optical depth', 'aod', 'aot', 'burn severity', 'air pollution',
     'plume height', 'air quality',  'water quality', 'smoke detection', 'active fire']
 
 natural_phenomenons = ['hurricane', 'earthquake', 'landslide', 'fire', 'flood',
-    'landslide', 'air', 'water', 'lightning','snow', 'volcano', 'cloud', 'ocean']
+    'air', 'water', 'lightning', 'snow', 'volcano', 'cloud', 'ocean']
 
 general_measurements = ['thickness', 'humidity', 'temperature', 'surface', 'precipitation']
 
 #dictionary of all relationships between platforms and instruments
-platform_instrument_relations = {'Terra':['ASTER', 'CERES', 'MISR', 'MODIS', 'MOPITT'], 
-'Aqua':["MODIS", "AMSU-A1", "AIRS", "AMSU-A2", "HSB", "CERES(2)"], "Suomi-NPP":["ATMS", "CERES", "CrIS", "OMPS", "VIIRS"], 
-"GCOM-W1":["AMSR2"], "GRACE":["KBR", "USO", "ACC", "SCA", "CES", "MTA", "GPS", "GSA"], "ALOS":["PALSAR-2"], "EO-1":["ALI", "HYPERION", "LAC"], 
-"TOPEX":["GPS", "LRA", "DORIS", "NRA"], "JPSS":["ATMS", "CERES", "CrIS", "OMPS", "VIIRS"], "CYGNSS":["DDMI"], "GPM":["DPR", "GPI"], 
-"TRMM":["TMI", "PR", "LIS", "CERES", "VIRS"], "Landsat-8":["OLI"], "Sentinel-1A":["SAR"]}
-
-stub = "https://search.earthdata.nasa.gov/search?"
+platform_instrument_relations = {
+    'MODIS': ['Aqua', 'Terra'],
+    'Terra':['ASTER', 'CERES', 'MISR', 'MODIS', 'MOPITT'], 
+    'Aqua':["MODIS", "AMSU-A1", "AIRS", "AMSU-A2", "HSB", "CERES(2)"],
+    "Suomi-NPP":["ATMS", "CERES", "CrIS", "OMPS", "VIIRS"], 
+    "GCOM-W1":["AMSR2"],
+    "GRACE":["KBR", "USO", "ACC", "SCA", "CES", "MTA", "GPS", "GSA"],
+    "ALOS":["PALSAR-2"],
+    "EO-1":["ALI", "HYPERION", "LAC"], 
+    "TOPEX":["GPS", "LRA", "DORIS", "NRA"],
+    "JPSS":["ATMS", "CERES", "CrIS", "OMPS", "VIIRS"],
+    "CYGNSS":["DDMI"],
+    "GPM":["DPR", "GPI"], 
+    "TRMM":["TMI", "PR", "LIS", "CERES", "VIRS"],
+    "Landsat-8":["OLI"],
+    "Sentinel-1A":["SAR"]
+}
 
 switch = {
     'features': 'ff=',
@@ -65,29 +76,20 @@ switch = {
     'horizontal_data_resolutoin': 'hdr='
 }
 
-#gets keywords for query (searches for certain keywords within application)
-def get_keywords(data):
+def get_descriptive_words(data):
     specific_measure = ''
     phenomenon = []
     measurement = ''
     keyword = ''
-
-    #modified to this method of comparing against multiple lists, since comparing to just one combined list yielded too many keywords
-    #too many keywords can lead to no query output, so limiting the keywords yet being specific is the goal! 
-
-    #if a specific measurement was found, then keep that as a keyword 
     for name in measurements:
         if name in data.lower():
             specific_measure = name
-
     for name in natural_phenomenons:
         if name in data.lower():
             phenomenon.append(name)
-
     for name in general_measurements:
         if name in data.lower():
             measurement = name
-    
     if len(specific_measure) != 0:
         keyword = specific_measure
     else:
@@ -96,102 +98,92 @@ def get_keywords(data):
             keyword = phenomenon[0] + "+" + measurement
         elif len(phenomenon) != 0:
             keyword = phenomenon[0]
+    return keyword
 
-    return keyword 
-
-#creates the CMR query links by combining all scraped variables together 
-def build_query_links(soup, data, application_url):
-
-    shortName = get_shortName(soup, data)
-    potential_platformName = get_platform(data)
-
-    if potential_platformName == "Sentinel-1":
-        potential_platformName = "Sentinel-1A"
-    if potential_platformName == "Landsat 8":
-        potential_platformName = "Landsat-8"
-
-    potential_instrumentName = get_instruments(data)
-    keywords = get_keywords(data)
-    nrt = get_nrt(data)
-
-    #adding parameters + variables to these links 
-    base_url = 'https://cmr.earthdata.nasa.gov/search/collections?' 
-    url = 'https://cmr.earthdata.nasa.gov/search/collections?' 
-    query_links = [] #append the query links to this list 
+def get_dataset(url, nrt, descriptive_words):
+    response = requests.get(url)
+    root = ET.fromstring(response.content)
+    hits = int(root.find("hits").text)
+    if hits == 0:
+        return None
     
-    if len(shortName) != 0:
-        url = url + 'short_name=' + shortName
-    else:
-        #only add to the query link if the instrument and platform go together 
-        if len(potential_instrumentName) != 0:
-            for key in platform_instrument_relations:
-                if key == potential_platformName:
-                    for value in platform_instrument_relations[key]:
-                        if value == potential_instrumentName:
-                            url = url + '&platform=' + potential_platformName + '&instrument='+ potential_instrumentName
-                            query_links.append(url)
-            #otherwise, only add the instrument name in the query 
-            if '&instrument=' not in url:
-                url = url + '&instrument='+ potential_instrumentName
-                query_links.append(url)
-        #if the instrument name doesn't exist, then add the platform name 
-        if len(potential_instrumentName) == 0 and len(potential_platformName) != 0:
-            url = url + '&platform=' + potential_platformName
-            query_links.append(url)
-        #keep appending the variables found to form the most descriptive query 
-        if len(keywords) !=0:
-            url = url + '&keyword=' + keywords
-            query_links.append(url)
-            #one of the query links will just be of the keywords found (this at least guarentees some type of dataset output)
-            additional = base_url + '&keyword=' + keywords
-            query_links.append(additional)
-        if len(nrt) !=0:
-            url = url + '&collection_data_type=' + nrt 
-            query_links.append(url)
-    #removes duplicate query links
-    query_links = list(dict.fromkeys(query_links))
-    return query_links 
+    if nrt:
+        nrt_url = url + "&collection_data_type=NEAR_REAL_TIME"
+        nrt_response = requests.get(nrt_url)
+        nrt_root = ET.fromstring(nrt_response.content)
+        nrt_hits = int(nrt_root.find("hits").text)
+        if nrt_hits != 0:
+            url = nrt_url
+            response = nrt_response
+            root = nrt_root
+            hits = nrt_hits
+    
+    descriptive_words = re.sub(" ", "%20", descriptive_words)
+    desc_url = url + "&keyword=" + descriptive_words
+    print(desc_url)
+    desc_response = requests.get(desc_url)
+    desc_root = ET.fromstring(desc_response.content)
+    desc_hits = int(desc_root.find("hits").text)
+    if desc_hits != 0:
+        url = desc_url
+        response = desc_response
+        root = desc_root
+        hits = desc_hits
 
-#runs all of the query links + adds them as rows 
-def make_query(soup, data, application_url):
-    query_links = build_query_links(soup, data, application_url)
-    dataset_title = ''
-    dataset_link = ''
-    queryLink_matching = {}
-    #call non-query variable functions 
-    topic = get_topic(data)
-    app_name = get_application_title(soup)
-    publications = get_publications(soup)
-    description = get_description(data)
-    #start building the row dictionary for every application-dataset relationship 
-    row = {'Topic':topic, 'Name':app_name, 'Site':application_url, 'Publication':publication}
-    for url in query_links: 
-        output = requests.get(url = url) #contents of the query output 
-        datasets = {}
-        url = url 
-        #parses through CMR XML returned contents 
-        root = ET.fromstring(output.content)
-        #create dictionary with datasets (dataset name, dataset link)
-        for child in root.iter('references'):
-            for elem in child.iter():
-                if elem.tag == 'name':
-                    dataset_title = "{}".format(elem.text)
-                if elem.tag == 'location':
-                    dataset_link = "{}".format(elem.text)
-                datasets[dataset_title] = dataset_link
-        try:
-            del datasets['']
-        except KeyError:
-            pass
-        #creates another dictionary with the query link as the key, and the datasets dictionary as the value 
-        queryLink_matching[url] = datasets
-    for url, datasets in queryLink_matching.items():
-        row = {'Topic':topic, 'Name':app_name, 'Site':application_url, 'Publication':publication, 'Application Description':description, 'Query Link': url}
-        for key in datasets:
-            row['Dataset Title'] = key
-            row['Dataset LP'] = datasets[key]
-        rows.append(row) #appends only the first value of the query output for each query link 
- 
+    if hits > 15:
+        return None
+    datasets = []
+    for reference in root.find('references'):
+        dataset_title = ""
+        dataset_link = ""
+        for elem in reference:
+            if elem.tag == 'name':
+                dataset_title = elem.text
+            if elem.tag == 'location':
+                dataset_link = elem.text
+        datasets.append((url, dataset_title, dataset_link))
+    return datasets
+
+def get_datasets(keywords):
+
+    eds_url = "https://search.earthdata.nasa.gov/search?ac=true"
+    cmr_url = 'https://cmr.earthdata.nasa.gov/search/collections?' 
+    queries = []
+
+    for shortname in keywords['shortnames']:
+        queries.append(base_url + 'short_name=' + shortname)
+
+    #only add to the query link if the instrument and platform go together
+    for instrument in keywords['instruments']:
+        url = cmr_url + "&instrument=" + instrument
+        for platform in keywords['platforms']:
+            if instrument in platform_instrument_relations.keys():
+                if platform in platform_instrument_relations[instrument]:
+                    url = url + "&platform=" + platform
+        queries.append(url)
+
+    #if the instrument name doesn't exist, then add the platform name 
+    if len(keywords['instruments']) == 0 and len(keywords['platforms']) != 0:
+        url = cmr_url
+        for platform in keywords['platforms']:
+            url = url + '&platform=' + platform
+        queries.append(url)
+
+    '''
+    for word in keywords['other']:
+        url = cmr_url + "&keyword=" + word
+        queries.append(url)
+    '''
+
+    #removes duplicate query links
+    queries = list(dict.fromkeys(queries))
+    datasets = []
+    for i in range(0, len(queries)):
+        result = get_dataset(queries[i], keywords['nrt'], keywords['descriptive'])
+        if result:
+            datasets += result
+    return datasets
+
 def build_search_url(keywords):
     search_url = stub
     for category in keywords:
@@ -230,7 +222,10 @@ def get_platforms(data):
     return platforms
 
 def get_nrt(data):
-    return "near real" in data.lower() or "nrt" in data.lower()
+    data = data.lower()
+    if re.search("near real|nrt|real time|real-time", data):
+        return True
+    return False
 
 def get_topic(data):
     app_topic = []
@@ -288,53 +283,33 @@ def get_publications(sentences, soup):
     return publications
 
 def get_other(data, keywords):
-    other = {'words': [], 'datasets': []}
-    covered = []
+    other = []
     words = get_words(data)
     for word in words:
         if re.match("[A-Z]{3,8}_*\d*[A-Z]*\d*", word) and word not in keywords:
-            covered.append(word)
-            result = get_other_cmr(word)
-            if result:
-                other['words'].append(word)
-                other['datasets'].append(result)
+            other.append(word)
     return other
 
-def get_other_cmr(word):
-    url = "https://cmr.earthdata.nasa.gov/search/collections?&keyword="+word
-    response = requests.get(url)
-    root = ET.fromstring(response.content)
-    hits = int(root.find("hits").text)
-    if hits == 0 or hits > 15:
-        return None
-    datasets = {}
-    for reference in root.find('references'):
-        dataset_title = ""
-        dataset_link = ""
-        for elem in reference:
-            if elem.tag == 'name':
-                dataset_title = elem.text
-            if elem.tag == 'location':
-                dataset_link = elem.text
-        datasets[dataset_title] = dataset_link
-    return datasets
+def get_keywords(data, soup):
+    keywords = {'instruments': [], 'platforms': [], 'shortnames': [], 'nrt': False, 'other': []}
+    keywords['instruments'] = get_instruments(data)
+    keywords['platforms'] = get_platforms(data)
+    keywords['shortnames'] = get_shortNames(soup, data)
+    keywords['nrt'] = get_nrt(data)
+    keywords['other'] = get_other(data, keywords['instruments']+keywords['platforms']+keywords['shortnames'])
+    keywords['descriptive'] = get_descriptive_words(data)
+    return keywords
 
 def makedict(site, soup, data):
     sentences = get_sentences(data)
-    keywords = get_keywords(data)
     result = {}
     result['site'] = site
     result['topic'] = get_topic(data)
     result['name'] = get_application_title(soup)
     result['description'] = get_description(sentences)
     result['publications'] = get_publications(sentences, soup)
-    result['instruments'] = get_instruments(data)
-    result['platforms'] = get_platforms(data)
-    result['shortnames'] = get_shortNames(soup, data)
-    result['nrt'] = get_nrt(data)
-    other = get_other(data, result['instruments']+result['platforms']+result['shortnames'])
-    result['other_words'] = other['words']
-    result['other_datasets'] = other['datasets']
+    result['keywords'] = get_keywords(data, soup)
+    result['datasets'] = get_datasets(result['keywords'])
     return result
 
 def autofill(url):
@@ -360,10 +335,13 @@ def autofill(url):
     print(json.dumps(result, indent=4, sort_keys=True))
     return result
 
+autofill("https://firecast.conservation.org/About/DataDescription")
+
 autofill("http://flood.umd.edu/")
 autofill("http://floodobservatory.colorado.edu/Events/4827/2019Philippines4827.html")
 autofill("http://www.globalfiredata.org/analysis.html")
-autofill("https://cropmonitor.org/index.php/eodatatools/cmet/")
 autofill("https://essd.copernicus.org/articles/12/137/2020/")
-autofill("https://maps.disasters.nasa.gov/arcgis/apps/MapSeries/index.html?appid=2ba3d55f1d924ebc89cb8914ab4d138a")
-autofill("https://webmap.ornl.gov/ogc/dataset.jsp?ds_id=1321")
+
+#autofill("https://cropmonitor.org/index.php/eodatatools/cmet/")
+#autofill("https://maps.disasters.nasa.gov/arcgis/apps/MapSeries/index.html?appid=2ba3d55f1d924ebc89cb8914ab4d138a")
+#autofill("https://webmap.ornl.gov/ogc/dataset.jsp?ds_id=1321")
