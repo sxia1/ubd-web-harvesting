@@ -28,8 +28,6 @@ platform_names = ["AIRCRAFT", "Aqua", "Aquarius_SAC-D", "Terra", "AURA", "Suomi-
     "Sentinel-3", "Sentinel-6", "OMG", "TOPEX","GRACE-FO", "JPSS", "CYGNSS", "SAC",
     "GPM", "TRMM","IMERG"]
 
-overall = list_of_shortNames + instrument_names + platform_names
-
 application_topics = ['flood', 'fire', 'landslide', 'water', 'air', 'hurricane',
     'cyclone', 'snowfall', 'lake height', 'agriculture', 'hazard', 'earthquake',
     'energy', 'soil moisture', 'storm', 'precipitation', 'river height', 'volcanoe']
@@ -141,7 +139,7 @@ def get_dataset(url, nrt, descriptive_words):
                 dataset_title = elem.text
             if elem.tag == 'location':
                 dataset_link = elem.text
-        datasets.append((url, dataset_title, dataset_link))
+        datasets.append((dataset_title, dataset_link, url))
     return datasets
 
 def get_datasets(keywords):
