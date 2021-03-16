@@ -1,5 +1,6 @@
 import json
 import requests
+from s3_functions import s3Functions
 
 def get_facet_intruments(data):
     instruments = []
@@ -47,7 +48,7 @@ def get_facets():
     print("Got the Platforms!!")
     
     relations = get_relations(instruments)
-    obj = {'instruments': instruments, 'platforms': platforms, 'relations': relations}
+    obj = {'platforms': platforms, 'relations': relations}
     
     json_obj = json.dumps(obj, indent=4)
     with open("facets.json", "w") as outfile:
@@ -58,5 +59,3 @@ def get_index(data, facet):
         if data[i]['title'] == facet:
             return i
     return None
-
-get_facets()

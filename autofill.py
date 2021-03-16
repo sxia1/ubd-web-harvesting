@@ -4,16 +4,22 @@ import re
 import xml.etree.ElementTree as ET
 from w3lib.html import remove_tags
 import lxml, lxml.html, lxml.html.clean
-from nltk import tokenize
 import json
+from s3_functions import s3Functions
 
+s3 = s3Functions()
+data = s3.get_file('test-bucket-parth', 'facets.json')
+data = json.loads(data)
+print(data)
+'''
 with open('facets.json', 'r') as f:
     data = f.read()
 f.close()
 data = json.loads(data)
+'''
 
-instrument_names = data['instruments']
-platform_names = data['platforms'] 
+instrument_names = data['relations'].keys()
+platform_names = data['platforms']
 platform_instrument_relations = data['relations']
 
 list_of_shortNames = ["MCD14DL", "MCD14ML","VNP14", "MCD64A1", "MOD14", "MOD14A1",
@@ -116,7 +122,6 @@ def get_datasets(keywords):
     #only add to the query link if the instrument and platform go together
     for instrument in keywords['instruments']:
         url = cmr_url + "&instrument=" + instrument
-        queries.append(url)
         for platform in keywords['platforms']:
             if instrument in platform_instrument_relations.keys():
                 if platform in platform_instrument_relations[instrument]:
@@ -157,14 +162,14 @@ def get_shortNames(soup, data):
 def get_instruments(data):
     instruments = []
     for name in instrument_names:
-        if re.search("(?<=[^a-zA-Z])"+name+"(?=[^a-zA-Z])",data):
+        if re.search("(?<=[^a-zA-Z])"+name.lower()+"(?=[^a-zA-Z])",data.lower()):
             instruments.append(name)
     return instruments
 
 def get_platforms(data):
     platforms = []
     for name in platform_names:
-        if re.search("(?<=[^a-zA-Z])"+name+"(?=[^a-zA-Z])",data):
+        if re.search("(?<=[^a-zA-Z])"+name.lower()+"(?=[^a-zA-Z])",data.lower()):
             platforms.append(name)
     return platforms
 
@@ -195,7 +200,7 @@ def get_application_title(soup):
     return title 
 
 def get_sentences(data):
-    sentences = tokenize.sent_tokenize(data)
+    sentences = re.split("(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s", data)
     return sentences
 
 def get_words(data):
@@ -276,8 +281,9 @@ def autofill(url):
     data = remove_tags(data)
     #remove html entities like &#13;
     data = re.sub("&\W*\w{2,4};", "", data)
-    data = re.sub("\n", " ", data)
     data = re.sub("\s\s+", " ", data)
     result = makedict(url, soup, data)
-    print(json.dumps(result, indent=4, sort_keys=True))
+    print(json.dumps(result, indent=4))
     return result
+
+autofill("http://flood.umd.edu/")
