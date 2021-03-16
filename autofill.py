@@ -1,32 +1,24 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-import urllib.request
 import xml.etree.ElementTree as ET
-from urllib.request import urlopen
 from w3lib.html import remove_tags
-import csv 
 import lxml, lxml.html, lxml.html.clean
 from nltk import tokenize
 import json
 
-applications_list = []
+with open('facets.json', 'r') as f:
+    data = f.read()
+f.close()
+data = json.loads(data)
+
+instrument_names = data['instruments']
+platform_names = data['platforms'] 
+platform_instrument_relations = data['relations']
 
 list_of_shortNames = ["MCD14DL", "MCD14ML","VNP14", "MCD64A1", "MOD14", "MOD14A1",
     "MOD14A2", "MYD14", "MYD14A1", "MYD14A2", "VNP03MODLL", "VNP14", "VNP14A1",
     "VNP64A1", "MCD12Q1"]
-
-instrument_names = ["MODIS", "VIIRS", "AIRS", "MOPITT", "OMI", "OMPS", "TROPOMI", 
-    "AMSR2", "AMRSR-E", "OLI", "ECOSTRESS","SRTM", "TMPA", "PALSAR", "AVIRIS-NG", 
-    "Hyperion", "ATLAS", "GEDI", "SAR", "ASTER", "UAVSAR", "PRISM", "ETM", "OLCI",
-    "TIR", "GLISTIN-A", "AMR", "TMR", "ACC", "SCA", "GLAS", "PALSAR", "DDMI",
-    "AirSWOT", "ETM+", "TIRS", "MSI"]
-
-platform_names = ["AIRCRAFT", "Aqua", "Aquarius_SAC-D", "Terra", "AURA", "Suomi-NPP",
-    "Shizuku", "GRACE", "Landsat 8", "ISS", "SMAP", "ALOS", "Airborne", "EO-1",
-    "GCOM-W1", "ICESat-2", "Sentinel-1", "Aura", "Sentinel-5P", "Sentinel-2",
-    "Sentinel-3", "Sentinel-6", "OMG", "TOPEX","GRACE-FO", "JPSS", "CYGNSS", "SAC",
-    "GPM", "TRMM","IMERG"]
 
 application_topics = ['flood', 'fire', 'landslide', 'water', 'air', 'hurricane',
     'cyclone', 'snowfall', 'lake height', 'agriculture', 'hazard', 'earthquake',
@@ -43,37 +35,6 @@ natural_phenomenons = ['hurricane', 'earthquake', 'landslide', 'fire', 'flood',
 
 general_measurements = ['thickness', 'humidity', 'temperature', 'surface', 'precipitation']
 
-#dictionary of all relationships between platforms and instruments
-platform_instrument_relations = {
-    'MODIS': ['Aqua', 'Terra'],
-    'Terra':['ASTER', 'CERES', 'MISR', 'MODIS', 'MOPITT'], 
-    'Aqua':["MODIS", "AMSU-A1", "AIRS", "AMSU-A2", "HSB", "CERES(2)"],
-    "Suomi-NPP":["ATMS", "CERES", "CrIS", "OMPS", "VIIRS"], 
-    "GCOM-W1":["AMSR2"],
-    "GRACE":["KBR", "USO", "ACC", "SCA", "CES", "MTA", "GPS", "GSA"],
-    "ALOS":["PALSAR-2"],
-    "EO-1":["ALI", "HYPERION", "LAC"], 
-    "TOPEX":["GPS", "LRA", "DORIS", "NRA"],
-    "JPSS":["ATMS", "CERES", "CrIS", "OMPS", "VIIRS"],
-    "CYGNSS":["DDMI"],
-    "GPM":["DPR", "GPI"], 
-    "TRMM":["TMI", "PR", "LIS", "CERES", "VIRS"],
-    "Landsat-8":["OLI"],
-    "Sentinel-1A":["SAR"]
-}
-
-switch = {
-    'features': 'ff=',
-    'platforms': 'fp=',
-    'instruments': 'fi=',
-    'organizations': 'fcd=',
-    'projects': 'fpj=',
-    'processing_levels': 'fl=',
-    'data_format': 'gdf=',
-    'tiling_system': 's2n=',
-    'horizontal_data_resolutoin': 'hdr='
-}
-
 def get_descriptive_words(data):
     specific_measure = ''
     phenomenon = []
@@ -82,23 +43,23 @@ def get_descriptive_words(data):
     for name in measurements:
         if name in data.lower():
             specific_measure = name
+    if len(specific_measure) != 0:
+        return specific_measure
     for name in natural_phenomenons:
         if name in data.lower():
             phenomenon.append(name)
     for name in general_measurements:
         if name in data.lower():
             measurement = name
-    if len(specific_measure) != 0:
-        keyword = specific_measure
-    else:
-        #combine the general measurements and natural phenomenons to get a more specific search 
-        if len(phenomenon) != 0 and len(measurement) != 0:
-            keyword = phenomenon[0] + "+" + measurement
-        elif len(phenomenon) != 0:
-            keyword = phenomenon[0]
-    return keyword
+    #combine the general measurements and natural phenomenons to get a more specific search 
+    if len(phenomenon) != 0 and len(measurement) != 0:
+        return phenomenon[0] + "+" + measurement
+    elif len(phenomenon) != 0:
+        return phenomenon[0]
 
 def get_dataset(url, nrt, descriptive_words):
+    url = re.sub(" ", "%20", url)
+    descriptive_words = re.sub(" ", "%20", descriptive_words)
     response = requests.get(url)
     root = ET.fromstring(response.content)
     hits = int(root.find("hits").text)
@@ -116,9 +77,7 @@ def get_dataset(url, nrt, descriptive_words):
             root = nrt_root
             hits = nrt_hits
     
-    descriptive_words = re.sub(" ", "%20", descriptive_words)
     desc_url = url + "&keyword=" + descriptive_words
-    print(desc_url)
     desc_response = requests.get(desc_url)
     desc_root = ET.fromstring(desc_response.content)
     desc_hits = int(desc_root.find("hits").text)
@@ -130,6 +89,8 @@ def get_dataset(url, nrt, descriptive_words):
 
     if hits > 15:
         return None
+
+    print(url)
     datasets = []
     for reference in root.find('references'):
         dataset_title = ""
@@ -144,35 +105,34 @@ def get_dataset(url, nrt, descriptive_words):
 
 def get_datasets(keywords):
 
-    eds_url = "https://search.earthdata.nasa.gov/search?ac=true"
     cmr_url = 'https://cmr.earthdata.nasa.gov/search/collections?' 
     queries = []
 
     for shortname in keywords['shortnames']:
         queries.append(base_url + 'short_name=' + shortname)
 
+    covered_platforms = set()
+
     #only add to the query link if the instrument and platform go together
     for instrument in keywords['instruments']:
         url = cmr_url + "&instrument=" + instrument
+        queries.append(url)
         for platform in keywords['platforms']:
             if instrument in platform_instrument_relations.keys():
                 if platform in platform_instrument_relations[instrument]:
                     url = url + "&platform=" + platform
+                    covered_platforms.add(platform)
         queries.append(url)
 
-    #if the instrument name doesn't exist, then add the platform name 
-    if len(keywords['instruments']) == 0 and len(keywords['platforms']) != 0:
-        url = cmr_url
-        for platform in keywords['platforms']:
-            url = url + '&platform=' + platform
-        queries.append(url)
-
+    for platform in keywords['platforms']:
+        if platform not in covered_platforms:
+            url = cmr_url + '&platform=' + platform
+            queries.append(url)
     '''
     for word in keywords['other']:
         url = cmr_url + "&keyword=" + word
         queries.append(url)
     '''
-
     #removes duplicate query links
     queries = list(dict.fromkeys(queries))
     datasets = []
@@ -181,15 +141,6 @@ def get_datasets(keywords):
         if result:
             datasets += result
     return datasets
-
-def build_search_url(keywords):
-    search_url = stub
-    for category in keywords:
-        search_url += switch.get(category)
-        for each in category:
-            search_url += each + '!'
-        search_url += '&'
-    return search_url
 
 def get_shortNames(soup, data):
     shortNames = []
@@ -204,18 +155,16 @@ def get_shortNames(soup, data):
     return shortNames
 
 def get_instruments(data):
-    #collecting multiple instrument names, could be useful in algorithm refinement 
     instruments = []
     for name in instrument_names:
-        if name in data:
+        if re.search("(?<=[^a-zA-Z])"+name+"(?=[^a-zA-Z])",data):
             instruments.append(name)
     return instruments
 
 def get_platforms(data):
-    #collecting multiple platform names, could be useful in algorithm refinement 
     platforms = []
     for name in platform_names:
-        if name in data:
+        if re.search("(?<=[^a-zA-Z])"+name+"(?=[^a-zA-Z])",data):
             platforms.append(name)
     return platforms
 
@@ -332,14 +281,3 @@ def autofill(url):
     result = makedict(url, soup, data)
     print(json.dumps(result, indent=4, sort_keys=True))
     return result
-
-autofill("https://firecast.conservation.org/About/DataDescription")
-
-autofill("http://flood.umd.edu/")
-autofill("http://floodobservatory.colorado.edu/Events/4827/2019Philippines4827.html")
-autofill("http://www.globalfiredata.org/analysis.html")
-autofill("https://essd.copernicus.org/articles/12/137/2020/")
-
-#autofill("https://cropmonitor.org/index.php/eodatatools/cmet/")
-#autofill("https://maps.disasters.nasa.gov/arcgis/apps/MapSeries/index.html?appid=2ba3d55f1d924ebc89cb8914ab4d138a")
-#autofill("https://webmap.ornl.gov/ogc/dataset.jsp?ds_id=1321")
